@@ -3,12 +3,51 @@
 import RegistrationForm from '@/app/components/form'
 import FloatingNavbar from './components/Navbar'
 
+const TIMELINE = [
+  {
+    label: 'Registration opens',
+    date: 'Monday, 17 August 2026',
+    accent: 'emerald',
+  },
+  {
+    label: 'Registration / application deadline',
+    date: 'Friday, 18 September 2026',
+    accent: 'red',
+  },
+  {
+    label: 'Team confirmation & kickoff',
+    date: 'Monday, 21 September 2026',
+    accent: 'emerald',
+  },
+  {
+    label: 'Build phase & mentorship',
+    date: '21 September – 5 October 2026',
+    accent: 'emerald',
+  },
+  {
+    label: 'Final submission deadline',
+    date: 'Tuesday, 6 October 2026, 11:59 PM (EAT)',
+    accent: 'red',
+  },
+  {
+    label: 'Demo Day & Judging',
+    date: 'Friday, 9 October 2026',
+    note: 'Alternate date under consideration: Wed, 7 Oct 2026 — TBC',
+    accent: 'red',
+  },
+  {
+    label: 'Winner announcement',
+    date: 'Same day as Demo Day',
+    accent: 'emerald',
+  },
+] as const
+
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen bg-[#06110f] text-white lg:h-screen ">
+    <div className="min-h-screen bg-[#06110f] text-white lg:min-h-screen">
       <FloatingNavbar />
 
-      <main className="mx-auto flex min-h-screen max-w-7xl flex-col px-5 pb-5 pt-24 sm:px-8 lg:h-full lg:min-h-0 lg:px-10 lg:pt-24">
+      <main className="mx-auto flex min-h-screen max-w-7xl flex-col px-5 pb-5 pt-24 sm:px-8 lg:px-10 lg:pt-24">
         <div className="flex flex-1 items-center justify-center">
           <div className="relative w-full max-w-4xl">
             <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none">
@@ -19,7 +58,6 @@ export default function RegisterPage() {
 
             <section className="relative">
               <div className="text-center">
-
                 <h1 className="mx-auto max-w-3xl text-3xl font-black mt-4 uppercase leading-[0.9] tracking-[-0.045em] sm:text-4xl lg:text-5xl xl:text-6xl">
                   Africa
                   <span className="text-red-500"> Blood Bank</span>
@@ -32,19 +70,45 @@ export default function RegisterPage() {
                   Design the next generation of Blood Bank Information Systems
                   that strengthen health systems and save lives.
                 </p>
+              </div>
 
-                <div className="mt-5 flex items-center justify-center gap-4">
-                  <div className="h-7 w-px bg-emerald-500/40" />
+              {/* Key dates timeline */}
+              <div className="mx-auto mt-8 max-w-4xl">
+                <p className="mb-3 text-center font-mono text-[9px] uppercase tracking-[0.25em] text-emerald-400">
+                  Key dates
+                </p>
 
-                  <div className="text-left">
-                    <p className="font-mono text-[9px] uppercase tracking-widest text-neutral-500">
-                      Registration closes
-                    </p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {TIMELINE.map((item) => (
+                    <div
+                      key={item.label}
+                      className={`relative border bg-[#071411] px-3 py-3 ${
+                        item.accent === 'red'
+                          ? 'border-red-500/30'
+                          : 'border-emerald-400/30'
+                      }`}
+                    >
+                      <span
+                        className={`absolute left-0 top-0 h-full w-0.5 ${
+                          item.accent === 'red' ? 'bg-red-500' : 'bg-emerald-400'
+                        }`}
+                      />
 
-                    <p className="mt-1 text-xs font-semibold text-white">
-                      Friday, 18 September 2026
-                    </p>
-                  </div>
+                      <p className="font-mono text-[9px] uppercase tracking-widest text-neutral-500">
+                        {item.label}
+                      </p>
+
+                      <p className="mt-1.5 text-xs font-semibold leading-4 text-white sm:text-sm">
+                        {item.date}
+                      </p>
+
+                      {'note' in item && item.note && (
+                        <p className="mt-1 text-[10px] leading-4 text-neutral-500">
+                          {item.note}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -80,7 +144,7 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <footer className="shrink-0 border-t border-white/10 pt-3">
+        <footer className="shrink-0 border-t mb-2 border-white/10 pt-3">
           <div className="flex items-center justify-between gap-4">
             <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-neutral-600">
               ABBIS Hackathon 2026
