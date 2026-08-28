@@ -6,7 +6,7 @@ import FloatingNavbar from './components/Navbar'
 const TIMELINE = [
   {
     label: 'Registration opens',
-    date: 'Monday, 17 August 2026',
+    date: 'Monday, 31 August 2026',
     accent: 'emerald',
   },
   {
