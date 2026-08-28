@@ -25,10 +25,9 @@ const TAB_LABELS: Record<Tab, string> = {
 };
 
 const FIELD_HELP: Record<string, string> = {
-  isSolo: 'Toggle on if you’re applying without a team.',
   teamName: 'Team name — this becomes your row label in the sheet.',
   trackFocus: 'Pick one of the six ABBIS focus areas.',
-  leadName: 'Full name of the team lead or solo applicant.',
+  leadName: 'Full name of the team lead.',
   leadEmail: 'Confirmation and kickoff details go here.',
   leadPhone: 'Include country code, e.g. +254...',
   country: 'Citizenship or verifiable residency — must be an African country.',
@@ -44,7 +43,6 @@ export default function RegistrationForm() {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [serverError, setServerError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [isSolo, setIsSolo] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [values, setValues] = useState({
     teamName: '',
@@ -79,7 +77,47 @@ export default function RegistrationForm() {
   const activeIndex = TABS.indexOf(activeTab);
   const isLastTab = activeIndex === TABS.length - 1;
 
+  // A tab is "complete" only when every field it contains has a value.
+  function isTabValid(tab: Tab): boolean {
+    switch (tab) {
+      case 'team':
+        return values.teamName.trim() !== '' && values.trackFocus !== '';
+      case 'lead':
+        return (
+          values.leadName.trim() !== '' &&
+          values.leadEmail.trim() !== '' &&
+          values.leadPhone.trim() !== '' &&
+          values.country.trim() !== ''
+        );
+      case 'members':
+        // No teammates is fine, but any row that's been started must be finished.
+        return members.every((m) => m.name.trim() !== '' && m.email.trim() !== '');
+      case 'eligibility':
+        return (
+          values.ageConfirmed === true &&
+          values.portfolioLink.trim() !== '' &&
+          values.workHistory.trim() !== ''
+        );
+      default:
+        return false;
+    }
+  }
+
+  const currentTabValid = isTabValid(activeTab);
+
+  // The furthest tab reachable given how much has been completed so far —
+  // i.e. the first incomplete tab, or the last tab if everything before it is done.
+  let maxReachableIndex = 0;
+  while (
+    maxReachableIndex < TABS.length - 1 &&
+    isTabValid(TABS[maxReachableIndex])
+  ) {
+    maxReachableIndex++;
+  }
+
   function handleNext() {
+    if (!isTabValid(activeTab)) return;
+
     if (isLastTab) {
       handleSubmit();
     } else {
@@ -95,8 +133,8 @@ export default function RegistrationForm() {
       ...values,
       trackFocus: values.trackFocus as RegistrationInput['trackFocus'],
       ageConfirmed: values.ageConfirmed as RegistrationInput['ageConfirmed'],
-      isSolo,
-      members: isSolo ? [] : members,
+      isSolo: false,
+      members,
     };
 
     console.log(payload);
@@ -171,23 +209,23 @@ export default function RegistrationForm() {
         <div className="flex items-center justify-between border-b border-neutral-800 bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-700 px-4 py-2.5">
           <div className="flex items-center gap-2">
             <SheetIcon />
-            <span className="font-mono text-xs text-white/90">
+            <span className="font-mono text-sm font-semibold text-white/90">
               ABBIS Hackathon Registrations
             </span>
           </div>
 
           {status === 'success' && (
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white">
+            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">
               <CheckIcon /> Saved
             </span>
           )}
         </div>
 
         <div className="flex items-center gap-2 border-b border-neutral-800 bg-neutral-900/60 px-3 py-2">
-          <span className="font-mono text-xs text-neutral-600">fx</span>
+          <span className="font-mono text-sm font-semibold text-neutral-600">fx</span>
 
           <span
-            className={`truncate font-mono text-xs ${
+            className={`truncate font-mono text-sm font-medium ${
               focusedField && fieldErrors[focusedField]
                 ? 'text-red-400'
                 : 'text-neutral-500'
@@ -207,7 +245,7 @@ export default function RegistrationForm() {
           {['A', 'B', 'C'].map((l) => (
             <div
               key={l}
-              className="border-l border-neutral-800 py-1 text-center font-mono text-[10px] text-neutral-600"
+              className="border-l border-neutral-800 py-1 text-center font-mono text-xs font-semibold text-neutral-600"
             >
               {l}
             </div>
@@ -220,23 +258,12 @@ export default function RegistrationForm() {
           {activeTab === 'team' && (
             <>
               <Row n={rowCounter.next()}>
-                <Cell span={3}>
-                  <ToggleField
-                    checked={isSolo}
-                    onChange={setIsSolo}
-                    onFocusField={() => setFocusedField('isSolo')}
-                    label="Applying solo"
-                  />
-                </Cell>
-              </Row>
-
-              <Row n={rowCounter.next()}>
                 <Cell span={3} error={!!fieldErrors.teamName}>
                   <input
                     value={values.teamName}
                     onChange={(e) => setField('teamName', e.target.value)}
                     onFocus={() => setFocusedField('teamName')}
-                    placeholder={isSolo ? 'Your name (used as team name)' : 'Team name'}
+                    placeholder="Team name"
                     className={inputClass}
                   />
                 </Cell>
@@ -324,63 +351,52 @@ export default function RegistrationForm() {
 
           {activeTab === 'members' && (
             <>
-              {isSolo && (
-                <Row n={rowCounter.next()}>
-                  <Cell span={3}>
-                    <p className="px-3 py-2 font-mono text-xs text-neutral-600">
-                      Not applicable — solo applicant
-                    </p>
+              {members.map((m, i) => (
+                <Row n={rowCounter.next()} key={i}>
+                  <Cell span={1}>
+                    <input
+                      value={m.name}
+                      onChange={(e) =>
+                        updateMember(i, 'name', e.target.value)
+                      }
+                      onFocus={() => setFocusedField('members')}
+                      placeholder="Name"
+                      className={inputClass}
+                    />
+                  </Cell>
+
+                  <Cell span={1}>
+                    <input
+                      type="email"
+                      value={m.email}
+                      onChange={(e) =>
+                        updateMember(i, 'email', e.target.value)
+                      }
+                      onFocus={() => setFocusedField('members')}
+                      placeholder="Email"
+                      className={inputClass}
+                    />
+                  </Cell>
+
+                  <Cell span={1}>
+                    <button
+                      type="button"
+                      onClick={() => removeMember(i)}
+                      className="flex h-full w-full items-center justify-center font-mono text-sm font-medium text-neutral-600 hover:text-red-400"
+                    >
+                      Remove
+                    </button>
                   </Cell>
                 </Row>
-              )}
+              ))}
 
-              {!isSolo &&
-                members.map((m, i) => (
-                  <Row n={rowCounter.next()} key={i}>
-                    <Cell span={1}>
-                      <input
-                        value={m.name}
-                        onChange={(e) =>
-                          updateMember(i, 'name', e.target.value)
-                        }
-                        onFocus={() => setFocusedField('members')}
-                        placeholder="Name"
-                        className={inputClass}
-                      />
-                    </Cell>
-
-                    <Cell span={1}>
-                      <input
-                        type="email"
-                        value={m.email}
-                        onChange={(e) =>
-                          updateMember(i, 'email', e.target.value)
-                        }
-                        onFocus={() => setFocusedField('members')}
-                        placeholder="Email"
-                        className={inputClass}
-                      />
-                    </Cell>
-
-                    <Cell span={1}>
-                      <button
-                        type="button"
-                        onClick={() => removeMember(i)}
-                        className="flex h-full w-full items-center justify-center font-mono text-xs text-neutral-600 hover:text-red-400"
-                      >
-                        Remove
-                      </button>
-                    </Cell>
-                  </Row>
-                ))}
-
-              {!isSolo && members.length < 3 && (
+              {members.length < 3 && (
                 <Row n={rowCounter.next()}>
                   <Cell span={3}>
                     <button
                       type="button"
                       onClick={addMember}
-                      className="w-full px-3 py-2 text-left font-mono text-xs text-neutral-500 hover:text-neutral-300"
+                      className="w-full px-3 py-2 text-left font-mono text-sm font-medium text-neutral-500 hover:text-neutral-300"
                     >
                       + Insert row · add teammate ({members.length}/3)
                     </button>
@@ -437,26 +453,35 @@ export default function RegistrationForm() {
 
         <div className="flex items-center justify-between border-t border-neutral-800 bg-neutral-900 px-2 py-1.5">
           <div className="flex items-center gap-1">
-            {TABS.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setActiveTab(t)}
-                className={`rounded-t px-3 py-1.5 font-mono text-xs transition ${
-                  activeTab === t
-                    ? 'border-t-2 border-red-600 bg-neutral-925 text-neutral-200'
-                    : 'text-neutral-500 hover:bg-neutral-800/60 hover:text-neutral-300'
-                }`}
-              >
-                {TAB_LABELS[t]}
-              </button>
-            ))}
+            {TABS.map((t, i) => {
+              const locked = i > maxReachableIndex;
+
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => {
+                    if (!locked) setActiveTab(t);
+                  }}
+                  className={`rounded-t px-3 py-1.5 font-mono text-sm font-medium transition ${
+                    activeTab === t
+                      ? 'border-t-2 border-red-600 bg-neutral-925 text-neutral-200'
+                      : locked
+                      ? 'cursor-not-allowed text-neutral-700'
+                      : 'text-neutral-500 hover:bg-neutral-800/60 hover:text-neutral-300'
+                  }`}
+                >
+                  {TAB_LABELS[t]}
+                </button>
+              );
+            })}
           </div>
 
           <button
             type="submit"
-            disabled={status === 'submitting'}
-            className="mr-1 rounded-md bg-[#0f2a52] px-4 py-1.5 text-xs font-medium text-white transition hover:bg-[#163a6e] disabled:opacity-50"
+            disabled={status === 'submitting' || !currentTabValid}
+            className="mr-1 rounded-md bg-[#0f2a52] px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-[#163a6e] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {status === 'submitting'
               ? 'Saving…'
@@ -467,13 +492,13 @@ export default function RegistrationForm() {
         </div>
 
         {status === 'error' && serverError && (
-          <p className="border-t border-neutral-800 bg-red-950/30 px-4 py-2 text-center text-xs text-red-400">
+          <p className="border-t border-neutral-800 bg-red-950/30 px-4 py-2 text-center text-sm font-medium text-red-400">
             {serverError}
           </p>
         )}
 
         {status === 'success' && (
-          <p className="border-t border-neutral-800 bg-emerald-950/20 px-4 py-2 text-center text-xs text-emerald-400">
+          <p className="border-t border-neutral-800 bg-emerald-950/20 px-4 py-2 text-center text-sm font-medium text-emerald-400">
             You're in — check your email for confirmation and kickoff details.
           </p>
         )}
@@ -483,16 +508,16 @@ export default function RegistrationForm() {
 }
 
 const inputClass =
-  'w-full bg-transparent px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 outline-none';
+  'w-full bg-transparent px-3 py-2 text-base font-medium text-neutral-200 placeholder:text-neutral-500 outline-none';
 
 function HeaderRow({ n, label }: { n: number; label: string }) {
   return (
     <div className="grid grid-cols-[40px_repeat(3,1fr)]">
-      <div className="flex items-center justify-center border-r border-neutral-800 bg-neutral-900/60 py-2 font-mono text-[10px] text-neutral-600">
+      <div className="flex items-center justify-center border-r border-neutral-800 bg-neutral-900/60 py-2 font-mono text-xs font-semibold text-neutral-600">
         {n}
       </div>
 
-      <div className="col-span-3 bg-neutral-900/60 px-3 py-2 font-mono text-[11px] font-semibold tracking-wider text-neutral-400">
+      <div className="col-span-3 bg-neutral-900/60 px-3 py-2 font-mono text-xs font-bold tracking-wider text-neutral-400">
         {label}
       </div>
     </div>
@@ -502,7 +527,7 @@ function HeaderRow({ n, label }: { n: number; label: string }) {
 function Row({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[40px_repeat(3,1fr)]">
-      <div className="flex items-center justify-center border-r border-neutral-800 py-1 font-mono text-[10px] text-neutral-700">
+      <div className="flex items-center justify-center border-r border-neutral-800 py-1 font-mono text-xs font-medium text-neutral-700">
         {n}
       </div>
 
@@ -553,7 +578,7 @@ function ToggleField({
   label: string;
 }) {
   return (
-    <label className="flex items-center gap-2 px-3 py-2.5 text-sm text-neutral-300">
+    <label className="flex items-center gap-2 px-3 py-2.5 text-base font-medium text-neutral-300">
       <input
         type="checkbox"
         checked={checked}
